@@ -1,0 +1,32 @@
+# Environment variables
+.env
+
+# Dependencies
+node_modules/
+lib/
+
+# Build artifacts
+out/
+cache/
+artifacts/
+
+# Foundry
+broadcast/
+deployments.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Circuits
+circuits/
