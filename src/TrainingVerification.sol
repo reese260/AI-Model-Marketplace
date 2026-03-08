@@ -106,7 +106,10 @@ contract TrainingVerification is Initializable, OwnableUpgradeable, UUPSUpgradea
         string calldata metricsHashIPFS
     ) external {
         require(authorizedSubmitters[msg.sender], "Not authorized to submit");
-        require(submissions[jobId].submissionTime == 0, "Training already submitted");
+        require(
+            submissions[jobId].submissionTime == 0 || submissions[jobId].status == VerificationStatus.REJECTED,
+            "Training already submitted"
+        );
         require(bytes(modelHashIPFS).length > 0, "Invalid model hash");
         require(bytes(metricsHashIPFS).length > 0, "Invalid metrics hash");
 
@@ -156,7 +159,10 @@ contract TrainingVerification is Initializable, OwnableUpgradeable, UUPSUpgradea
         uint256[] calldata publicInputs
     ) external {
         require(authorizedSubmitters[msg.sender], "Not authorized to submit");
-        require(submissions[jobId].submissionTime == 0, "Training already submitted");
+        require(
+            submissions[jobId].submissionTime == 0 || submissions[jobId].status == VerificationStatus.REJECTED,
+            "Training already submitted"
+        );
         require(bytes(modelHashIPFS).length > 0, "Invalid model hash");
         require(bytes(metricsHashIPFS).length > 0, "Invalid metrics hash");
         require(address(zkVerifier) != address(0), "ZK verifier not configured");
