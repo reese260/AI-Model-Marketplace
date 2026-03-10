@@ -46,6 +46,9 @@ contract ModelTrainingEscrow is Initializable, OwnableUpgradeable, ReentrancyGua
     // Authorized contracts that can manage escrows
     mapping(address => bool) public authorizedManagers;
 
+    // Pending withdrawals for pull-payment pattern
+    mapping(address => uint256) public pendingWithdrawals;
+
     // Events
     event EscrowCreated(
         bytes32 indexed jobId,
@@ -70,6 +73,7 @@ contract ModelTrainingEscrow is Initializable, OwnableUpgradeable, ReentrancyGua
     );
     event EscrowRefunded(bytes32 indexed jobId, uint256 amount);
     event EscrowDisputed(bytes32 indexed jobId);
+    event WithdrawalReady(address indexed recipient, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -199,28 +203,27 @@ contract ModelTrainingEscrow is Initializable, OwnableUpgradeable, ReentrancyGua
         uint256 totalAmount = escrowData.totalAmount;
         uint256 dataAmount = (totalAmount * escrowData.dataProviderShare) / 10000;
         uint256 computeAmount = (totalAmount * escrowData.computeProviderShare) / 10000;
-        uint256 feeAmount = (totalAmount * escrowData.platformFee) / 10000;
+        // Last share computed by subtraction to avoid rounding dust being locked
+        uint256 feeAmount = totalAmount - dataAmount - computeAmount;
 
         // Determine ZK bonus
         uint256 zkBonus = applyZKBonus ? escrowData.zkProofBonus : 0;
 
-        // Transfer to data provider
-        (bool dataSuccess, ) = escrowData.dataProvider.call{value: dataAmount}("");
-        require(dataSuccess, "Data provider transfer failed");
+        // Credit recipients via pull-payment pattern to prevent push-payment DoS
+        pendingWithdrawals[escrowData.dataProvider] += dataAmount;
+        emit WithdrawalReady(escrowData.dataProvider, dataAmount);
 
-        // Transfer to compute provider (including ZK bonus if applicable)
         uint256 computeTotal = computeAmount + zkBonus;
-        (bool computeSuccess, ) = escrowData.computeProvider.call{value: computeTotal}("");
-        require(computeSuccess, "Compute provider transfer failed");
+        pendingWithdrawals[escrowData.computeProvider] += computeTotal;
+        emit WithdrawalReady(escrowData.computeProvider, computeTotal);
 
-        // Transfer platform fee
-        (bool feeSuccess, ) = feeRecipient.call{value: feeAmount}("");
-        require(feeSuccess, "Fee transfer failed");
+        pendingWithdrawals[feeRecipient] += feeAmount;
+        emit WithdrawalReady(feeRecipient, feeAmount);
 
         // Refund unused ZK bonus to requester if not applied
         if (!applyZKBonus && escrowData.zkProofBonus > 0) {
-            (bool refundSuccess, ) = escrowData.requester.call{value: escrowData.zkProofBonus}("");
-            require(refundSuccess, "ZK bonus refund failed");
+            pendingWithdrawals[escrowData.requester] += escrowData.zkProofBonus;
+            emit WithdrawalReady(escrowData.requester, escrowData.zkProofBonus);
         }
 
         if (zkBonus > 0) {
@@ -244,10 +247,22 @@ contract ModelTrainingEscrow is Initializable, OwnableUpgradeable, ReentrancyGua
 
         escrowData.status = EscrowStatus.REFUNDED;
 
-        (bool success, ) = escrowData.requester.call{value: escrowData.totalAmount}("");
+        uint256 refundAmount = escrowData.totalAmount + escrowData.zkProofBonus;
+        (bool success, ) = escrowData.requester.call{value: refundAmount}("");
         require(success, "Refund failed");
 
-        emit EscrowRefunded(jobId, escrowData.totalAmount);
+        emit EscrowRefunded(jobId, refundAmount);
+    }
+
+    /**
+     * @notice Withdraw funds credited to the caller via the pull-payment pattern
+     */
+    function withdraw() external nonReentrant {
+        uint256 amount = pendingWithdrawals[msg.sender];
+        require(amount > 0, "Nothing to withdraw");
+        pendingWithdrawals[msg.sender] = 0;
+        (bool success, ) = msg.sender.call{value: amount}("");
+        require(success, "Withdrawal failed");
     }
 
     /**

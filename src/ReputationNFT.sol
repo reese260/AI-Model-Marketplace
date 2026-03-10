@@ -115,6 +115,7 @@ contract ReputationNFT is Initializable, ERC721Upgradeable, OwnableUpgradeable, 
      * @return tokenId The ID of the newly minted reputation NFT
      */
     function registerProvider(address provider) external returns (uint256) {
+        require(authorizedUpdaters[msg.sender], "Not authorized to register");
         require(providerToTokenId[provider] == 0, "Provider already registered");
 
         uint256 tokenId = _tokenIdCounter++;
