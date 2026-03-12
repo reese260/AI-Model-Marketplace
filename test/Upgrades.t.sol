@@ -179,7 +179,7 @@ contract UpgradesTest is Test {
 
         // Create state
         address provider = makeAddr("provider");
-        vm.prank(provider);
+        proxy.setAuthorizedUpdater(address(this), true);
         proxy.registerProvider(provider);
         assertTrue(proxy.isProviderRegistered(provider));
 
@@ -233,7 +233,7 @@ contract UpgradesTest is Test {
 
         // Contract still works after upgrade
         address provider = makeAddr("provider");
-        vm.prank(provider);
+        proxy.setAuthorizedUpdater(address(this), true);
         proxy.registerProvider(provider);
         assertTrue(proxy.isProviderRegistered(provider));
     }

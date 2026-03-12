@@ -92,6 +92,7 @@ contract ZKVerificationTest is Test {
 
         // Configure permissions
         reputationNFT.setAuthorizedUpdater(address(marketplace), true);
+        reputationNFT.setAuthorizedUpdater(address(this), true);
         providerStaking.setAuthorizedContract(address(marketplace), true);
         trainingVerification.setAuthorizedSubmitter(address(marketplace), true);
         escrow.setAuthorizedManager(address(marketplace), true);
@@ -476,6 +477,10 @@ contract ZKVerificationTest is Test {
 
         marketplace.finalizeJob(jobId);
 
+        // Pull-payment: withdraw funds
+        vm.prank(computeProvider);
+        escrow.withdraw();
+
         // Check compute provider got the ZK bonus
         uint256 baseAmount = 1 ether; // 1.1 ETH - 0.1 ETH ZK bonus
         uint256 expectedComputePayment = (baseAmount * 7000) / 10000 + 0.1 ether; // 0.7 + 0.1 = 0.8 ETH
@@ -531,11 +536,9 @@ contract ZKVerificationTest is Test {
 
     function testReputationZKTracking() public {
         // Register provider
-        vm.prank(computeProvider);
         reputationNFT.registerProvider(computeProvider);
 
         // Update with ZK
-        reputationNFT.setAuthorizedUpdater(address(this), true);
         reputationNFT.updateReputationWithZK(computeProvider, true, 1 ether, 0);
 
         // Check ZK counter
@@ -553,12 +556,10 @@ contract ZKVerificationTest is Test {
     // ============ Helper Functions ============
 
     function _setupProviders() internal {
-        vm.prank(dataProvider);
         reputationNFT.registerProvider(dataProvider);
         vm.prank(dataProvider);
         providerStaking.stake{value: MIN_DATA_STAKE}(ProviderStaking.ProviderType.DATA);
 
-        vm.prank(computeProvider);
         reputationNFT.registerProvider(computeProvider);
         vm.prank(computeProvider);
         providerStaking.stake{value: MIN_COMPUTE_STAKE}(ProviderStaking.ProviderType.COMPUTE);

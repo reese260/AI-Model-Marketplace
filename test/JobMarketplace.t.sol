@@ -63,6 +63,7 @@ contract JobMarketplaceTest is Test {
 
         // Configure permissions
         reputationNFT.setAuthorizedUpdater(address(marketplace), true);
+        reputationNFT.setAuthorizedUpdater(address(this), true);
         providerStaking.setAuthorizedContract(address(marketplace), true);
         trainingVerification.setAuthorizedSubmitter(address(marketplace), true);
         escrow.setAuthorizedManager(address(marketplace), true);
@@ -98,33 +99,30 @@ contract JobMarketplaceTest is Test {
 
     function testProviderRegistrationAndStaking() public {
         // Register and stake as data provider
-        vm.startPrank(dataProvider);
         reputationNFT.registerProvider(dataProvider);
+        vm.startPrank(dataProvider);
         providerStaking.stake{value: MIN_DATA_STAKE}(ProviderStaking.ProviderType.DATA);
+        vm.stopPrank();
 
         assertTrue(reputationNFT.isProviderRegistered(dataProvider));
         ProviderStaking.StakeInfo memory stakeInfo = providerStaking.getStakeInfo(dataProvider);
         assertEq(stakeInfo.amount, MIN_DATA_STAKE);
         assertTrue(stakeInfo.isActive);
-        vm.stopPrank();
 
         // Register and stake as compute provider
-        vm.startPrank(computeProvider);
         reputationNFT.registerProvider(computeProvider);
+        vm.startPrank(computeProvider);
         providerStaking.stake{value: MIN_COMPUTE_STAKE}(ProviderStaking.ProviderType.COMPUTE);
+        vm.stopPrank();
 
         assertTrue(reputationNFT.isProviderRegistered(computeProvider));
         stakeInfo = providerStaking.getStakeInfo(computeProvider);
         assertEq(stakeInfo.amount, MIN_COMPUTE_STAKE);
-        vm.stopPrank();
     }
 
     function testFullJobWorkflow() public {
         // 1. Register providers
-        vm.prank(dataProvider);
         reputationNFT.registerProvider(dataProvider);
-
-        vm.prank(computeProvider);
         reputationNFT.registerProvider(computeProvider);
 
         // 2. Stake
@@ -184,6 +182,14 @@ contract JobMarketplaceTest is Test {
 
         marketplace.finalizeJob(jobId);
 
+        // Pull-payment: each party must withdraw
+        vm.prank(dataProvider);
+        escrow.withdraw();
+        vm.prank(computeProvider);
+        escrow.withdraw();
+        vm.prank(feeRecipient);
+        escrow.withdraw();
+
         // Check balances
         uint256 expectedDataPayment = (1 ether * 2000) / 10000; // 0.2 ETH
         uint256 expectedComputePayment = (1 ether * 7000) / 10000; // 0.7 ETH
@@ -223,7 +229,6 @@ contract JobMarketplaceTest is Test {
     }
 
     function testCannotApplyWithoutSufficientStake() public {
-        vm.prank(dataProvider);
         reputationNFT.registerProvider(dataProvider);
 
         // Stake minimum amount (0.1 ETH)
@@ -272,10 +277,7 @@ contract JobMarketplaceTest is Test {
 
     function testCancelJobWithAssignedProviders() public {
         // 1. Register providers
-        vm.prank(dataProvider);
         reputationNFT.registerProvider(dataProvider);
-
-        vm.prank(computeProvider);
         reputationNFT.registerProvider(computeProvider);
 
         // 2. Stake
@@ -335,7 +337,6 @@ contract JobMarketplaceTest is Test {
 
     function testCannotApplyTwice() public {
         // Register and stake
-        vm.prank(dataProvider);
         reputationNFT.registerProvider(dataProvider);
         vm.prank(dataProvider);
         providerStaking.stake{value: MIN_DATA_STAKE}(ProviderStaking.ProviderType.DATA);
@@ -364,12 +365,10 @@ contract JobMarketplaceTest is Test {
 
     function testTrainingChallenge() public {
         // Setup job and providers
-        vm.prank(dataProvider);
         reputationNFT.registerProvider(dataProvider);
         vm.prank(dataProvider);
         providerStaking.stake{value: MIN_DATA_STAKE}(ProviderStaking.ProviderType.DATA);
 
-        vm.prank(computeProvider);
         reputationNFT.registerProvider(computeProvider);
         vm.prank(computeProvider);
         providerStaking.stake{value: MIN_COMPUTE_STAKE}(ProviderStaking.ProviderType.COMPUTE);
