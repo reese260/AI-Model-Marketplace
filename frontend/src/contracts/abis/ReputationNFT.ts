@@ -282,6 +282,19 @@ export const ReputationNFTAbi = [
   },
   {
     "type": "function",
+    "name": "registerSelf",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "registerProvider",
     "inputs": [
       {

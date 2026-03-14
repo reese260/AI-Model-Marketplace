@@ -110,12 +110,24 @@ contract ReputationNFT is Initializable, ERC721Upgradeable, OwnableUpgradeable, 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /**
-     * @notice Register a new provider and mint them a reputation NFT
+     * @notice Self-register as a provider and mint a reputation NFT
+     * @return tokenId The ID of the newly minted reputation NFT
+     */
+    function registerSelf() external returns (uint256) {
+        return _registerProvider(msg.sender);
+    }
+
+    /**
+     * @notice Register a new provider and mint them a reputation NFT (authorized callers only)
      * @param provider Address of the provider to register
      * @return tokenId The ID of the newly minted reputation NFT
      */
     function registerProvider(address provider) external returns (uint256) {
         require(authorizedUpdaters[msg.sender], "Not authorized to register");
+        return _registerProvider(provider);
+    }
+
+    function _registerProvider(address provider) internal returns (uint256) {
         require(providerToTokenId[provider] == 0, "Provider already registered");
 
         uint256 tokenId = _tokenIdCounter++;

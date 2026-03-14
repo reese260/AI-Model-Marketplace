@@ -50,14 +50,13 @@ export function useRegisterProvider() {
   const { data: hash, error, isPending, writeContract } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const registerProvider = (provider: `0x${string}`) => {
+  const registerSelf = () => {
     writeContract({
       address,
       abi: ReputationNFTAbi,
-      functionName: "registerProvider",
-      args: [provider],
+      functionName: "registerSelf",
     });
   };
 
-  return { registerProvider, hash, error, isPending, isConfirming, isSuccess };
+  return { registerSelf, hash, error, isPending, isConfirming, isSuccess };
 }
