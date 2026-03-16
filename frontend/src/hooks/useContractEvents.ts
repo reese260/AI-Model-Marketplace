@@ -5,6 +5,7 @@ import { usePublicClient, useWatchContractEvent } from "wagmi";
 import { parseAbiItem } from "viem";
 import { JobMarketplaceAbi } from "@/contracts/abis/JobMarketplace";
 import { useContractAddress } from "@/config/contracts";
+import { DEPLOYMENT_BLOCK } from "@/config/constants";
 
 interface JobCreatedEvent {
   jobId: `0x${string}`;
@@ -34,7 +35,7 @@ export function useJobCreatedEvents() {
           event: parseAbiItem(
             "event JobCreated(bytes32 indexed jobId, address indexed requester, uint256 paymentAmount, string jobDetailsIPFS)"
           ),
-          fromBlock: "earliest",
+          fromBlock: DEPLOYMENT_BLOCK,
           toBlock: "latest",
         });
 

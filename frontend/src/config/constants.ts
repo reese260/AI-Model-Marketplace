@@ -16,3 +16,6 @@ export const MAX_REPUTATION_SCORE = 1000;
 // Supported chain IDs
 export const SUPPORTED_CHAIN_IDS = [80002, 137] as const;
 export const DEFAULT_CHAIN_ID = 80002; // Amoy
+
+// Block number when contracts were first deployed (for event queries)
+export const DEPLOYMENT_BLOCK = 35073004n;
